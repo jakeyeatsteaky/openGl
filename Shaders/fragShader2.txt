@@ -1,0 +1,11 @@
+#version 330 core
+
+out vec4 FragColor;
+in vec3 multiColor;
+
+uniform vec4 outputColor;
+
+void main()
+{
+   FragColor = vec4(multiColor, 1.0f) + outputColor;
+};
