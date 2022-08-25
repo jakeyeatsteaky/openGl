@@ -4,6 +4,15 @@
 #include <GLFW/glfw3.h>
 #include "Shaders.hpp"
 
+extern "C"
+{
+	#include "lua.h"
+	#include "lauxlib.h"
+	#include "lualib.h"
+}
+
+#pragma comment(lib, "liblua54.a")
+
 void fb_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 void keycallback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -13,6 +22,37 @@ const unsigned int HEIGHT = 600;
 
 int main()
 {
+	std::string cmd = "a = 7 + 12";
+
+	lua_State *L = luaL_newstate();					// L represents a single instance of a lua virtual machine
+
+	int r = luaL_dostring(L, cmd.c_str());			
+
+	
+	if (r == LUA_OK)
+	{
+		lua_getglobal(L, "a");												// pushes data box with a to the top of the stack
+		if (lua_isnumber(L, -1))											// queries the top of the stack (index -1)
+		{
+			float a_in_cpp = static_cast<float>(lua_tonumber(L, -1));
+			std::cout << "a_in_cpp: " << a_in_cpp << std::endl;
+
+		}
+	}
+	else
+	{
+		std::string errormsg = lua_tostring(L, -1);
+		std::cout << errormsg << std::endl;
+	}
+
+	lua_close(L);
+
+	// The Lua Stack: individual elements of the stack is indexed.  Each element on the stack contains the data, as well as information describing the data.  so when calling lua_isnumber, you interrogate the box to see what the data holds (so C++ knows the type).
+
+	// Stack is indexed from bottom up starting with 1.  0 = empty stack
+	// Can also be indexed relative to the top of the stack.  Top = -1, .... all the way down.  when querying the -1 up there, its specifying whats on top of the stack.
+
+
 	// First initialize the glfw library
 	glfwInit();
 	// Then apply configuration settings using glfwWindowHint(*,*)
