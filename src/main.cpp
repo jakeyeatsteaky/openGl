@@ -62,7 +62,7 @@ int main()
 		}
 	}
 
-	int idx1, idx2, idx3, idx4, idx5, idx6;
+	int idx1, idx2, idx3, idx4;
 
 	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
 	{
@@ -88,6 +88,22 @@ int main()
 		if (lua_isnumber(L, -1))
 		{
 			idx4 = static_cast<int>(lua_tonumber(L, -1));
+		}
+	}
+
+	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
+	{
+		lua_getglobal(L, "Add");
+		if (lua_isfunction(L, -1))
+		{
+			lua_pushnumber(L, 0.3f);
+			lua_pushnumber(L, 0.5f);
+
+			if (CheckLua(L, lua_pcall(L, 2, 1, 0)))
+			{
+				std::cout << "Lua: " << static_cast<float>(lua_tonumber(L, -1)) << std::endl;
+			}
+
 		}
 	}
 
@@ -170,8 +186,7 @@ int main()
 
 	std::cout << "indices: [" << idx1 << ", " << idx2 << ", " << idx3 << ", " << idx4 << "]" << std::endl;
 
-	float R1, G1, B1, R2, G2, B2, R3, G3, B3;
-	
+	float R1, G1;
 
 	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
 	{
@@ -181,15 +196,28 @@ int main()
 			lua_pushstring(L, "R1");
 			lua_gettable(L, -2);
 			R1 = lua_tonumber(L, -1);
+			lua_pop(L, 1);
+
+			lua_pushstring(L, "G1");
+			lua_gettable(L, -2);
+			G1 = lua_tonumber(L, -1);
 			lua_pop(L, -1);
+
 		}
 	}
-	std::cout << R1 << std::endl;
+
+	// Explaining the pattern above for lua:
+	// After the first call to "color", we know that the box "color" was placed on top of the stack.
+	// Query lua to see if the position -1 on the stack is a table, and if so
+	// Push the string (key) "G1" to the top of the stack.  Now since thats on top, we query the table at position -2
+	// on the stack to retrieve the value at key G1
+	// convert it to a number.
+	// Remove the string "G1" from the top of the stack so it goes back to looking like a regular table
 
 	float vertices3[]{
-	 -0.3f,  -0.3f, 0.0f,  R1 + R1, 0.0f,0.0f, 
-	 0.3f, -0.3f, 0.0f,    0.0f, R1, 0.0f,
-	 0.0f, 0.3f, 0.0f,     0.0f, 0.0f, R1
+	 -0.3f,  -0.3f, 0.0f,  R1, 0.0f,0.0f, 
+	 0.3f, -0.3f, 0.0f,    0.0f, G1, 0.0f,
+	 0.0f, 0.3f, 0.0f,     0.0f, 0.0f, G1
 	
 	};
 

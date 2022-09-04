@@ -16,3 +16,17 @@ color["B2"] = 0.0
 color["R3"] = 0.0
 color["G3"] = 0.0
 color["B3"] = 1.0
+
+function Add(a,b)
+	print("[LUA] Add stuff has been called AddStuff("..a..", "..b..")\n")
+	return a*b
+end
+
+
+
+
+
+
+
+
+
