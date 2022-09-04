@@ -20,16 +20,17 @@ void keycallback(GLFWwindow* window, int key, int scancode, int action, int mods
 const unsigned int WIDTH = 800;
 const unsigned int HEIGHT = 600;
 
+bool CheckLua(lua_State* L, int r);
+
 int main()
 {
-	std::string cmd = "a = 7 + 12";
+	std::string cmd = "a = 1";
+	std::string cmd2 = "b = a + 12 * 79 + math.sin(23.7)";
 
-	lua_State *L = luaL_newstate();					// L represents a single instance of a lua virtual machine
+	lua_State *L = luaL_newstate();											// L represents a single instance of a lua virtual machine
+	luaL_openlibs(L);
 
-	int r = luaL_dostring(L, cmd.c_str());			
-
-	
-	if (r == LUA_OK)
+	if(CheckLua(L, luaL_dostring(L, cmd.c_str())));			
 	{
 		lua_getglobal(L, "a");												// pushes data box with a to the top of the stack
 		if (lua_isnumber(L, -1))											// queries the top of the stack (index -1)
@@ -39,13 +40,74 @@ int main()
 
 		}
 	}
-	else
+
+	if(CheckLua(L, luaL_dostring(L, cmd2.c_str())));			
 	{
-		std::string errormsg = lua_tostring(L, -1);
-		std::cout << errormsg << std::endl;
+		lua_getglobal(L, "b");
+		if (lua_isnumber(L, -1))
+		{
+			float b_in_cpp = static_cast<float>(lua_tonumber(L, -1));
+			std::cout << "b_in_cpp: " << b_in_cpp << std::endl;
+		}
 	}
 
-	lua_close(L);
+
+	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
+	{
+		lua_getglobal(L, "testLua");
+		if (lua_isnumber(L, -1))
+		{
+			float testLua = static_cast<float>(lua_tonumber(L, -1));
+			std::cout << "from file practiceLua.lua: " << testLua << std::endl;
+		}
+	}
+
+	int idx1, idx2, idx3, idx4;
+
+	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
+	{
+		lua_getglobal(L, "idx1");
+		if (lua_isnumber(L, -1))
+		{
+			idx1 = static_cast<int>(lua_tonumber(L, -1));
+		}
+
+		lua_getglobal(L, "idx2");
+		if (lua_isnumber(L, -1))
+		{
+			idx2 = static_cast<int>(lua_tonumber(L, -1));
+		}
+
+		lua_getglobal(L, "idx3");
+		if (lua_isnumber(L, -1))
+		{
+			idx3 = static_cast<int>(lua_tonumber(L, -1));
+		}
+
+		lua_getglobal(L, "idx4");
+		if (lua_isnumber(L, -1))
+		{
+			idx4 = static_cast<int>(lua_tonumber(L, -1));
+		}
+	}
+
+	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
+	{
+		lua_getglobal(L, "Add");
+		if (lua_isfunction(L, -1))
+		{
+			lua_pushnumber(L, 0.3f);
+			lua_pushnumber(L, 0.5f);
+
+			if (CheckLua(L, lua_pcall(L, 2, 1, 0)))
+			{
+				std::cout << "Lua: " << static_cast<float>(lua_tonumber(L, -1)) << std::endl;
+			}
+
+		}
+	}
+
+
 
 	// The Lua Stack: individual elements of the stack is indexed.  Each element on the stack contains the data, as well as information describing the data.  so when calling lua_isnumber, you interrogate the box to see what the data holds (so C++ knows the type).
 
@@ -118,16 +180,49 @@ int main()
 	};
 
 	unsigned int indices[] = {
-		0, 1, 3,
-		3,0,2
+		idx1, idx2, idx4,
+		idx4, idx1, idx3
 	};
 
+	std::cout << "indices: [" << idx1 << ", " << idx2 << ", " << idx3 << ", " << idx4 << "]" << std::endl;
+
+	float R1, G1;
+
+	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
+	{
+		lua_getglobal(L, "color");
+		if (lua_istable(L, -1))
+		{
+			lua_pushstring(L, "R1");
+			lua_gettable(L, -2);
+			R1 = lua_tonumber(L, -1);
+			lua_pop(L, 1);
+
+			lua_pushstring(L, "G1");
+			lua_gettable(L, -2);
+			G1 = lua_tonumber(L, -1);
+			lua_pop(L, -1);
+
+		}
+	}
+
+	// Explaining the pattern above for lua:
+	// After the first call to "color", we know that the box "color" was placed on top of the stack.
+	// Query lua to see if the position -1 on the stack is a table, and if so
+	// Push the string (key) "G1" to the top of the stack.  Now since thats on top, we query the table at position -2
+	// on the stack to retrieve the value at key G1
+	// convert it to a number.
+	// Remove the string "G1" from the top of the stack so it goes back to looking like a regular table
+
 	float vertices3[]{
-	 -0.3f,  -0.3f, 0.0f,  1.0f, 0.0f, 0.0f, 
-	 0.3f, -0.3f, 0.0f,    0.0f, 1.0f, 0.0f,
-	 0.0f, 0.3f, 0.0f,     0.0f, 0.0f, 1.0f
+	 -0.3f,  -0.3f, 0.0f,  R1, 0.0f,0.0f, 
+	 0.3f, -0.3f, 0.0f,    0.0f, G1, 0.0f,
+	 0.0f, 0.3f, 0.0f,     0.0f, 0.0f, G1
 	
 	};
+
+
+	lua_close(L);
 
 	unsigned int VAO[3], VBO[3], EBO[2];
 	glGenBuffers(3, VBO);
@@ -278,6 +373,16 @@ void keycallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
 
 
+bool CheckLua(lua_State* L, int r)
+{
+	if (r != LUA_OK)
+	{
+		std::string errormsg = lua_tostring(L, -1);
+		std::cout << errormsg << std::endl;
+		return false;
+	}
+	return true;
+}
 
 
 

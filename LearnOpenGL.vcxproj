@@ -332,6 +332,9 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   <ItemGroup>
     <ClInclude Include="src\Shaders.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="src\practiceLua.lua" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
