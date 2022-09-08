@@ -15,8 +15,7 @@ void keycallback(GLFWwindow* window, int key, int scancode, int action, int mods
 const unsigned int WIDTH = 800;
 const unsigned int HEIGHT = 600;
 
-
-unsigned char* loadImage(int width, int height, int numChannels, std::string textureName);
+unsigned int generateTexture(std::string textureName);
 
 int main()
 {
@@ -37,6 +36,7 @@ int main()
 		glfwTerminate();
 		return -1;
 	}
+
 
 	glfwSetKeyCallback(window, keycallback);
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, 1);
@@ -78,11 +78,11 @@ int main()
 		};
 
 	float vertices2[]{
-	 0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  // top right
-	 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom right
-	0.0f,  0.5f, 0.0f,  0.0f, 1.0f, 0.0f, // top left  
-	0.0f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f
-	};
+	 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
+	 0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
+	 0.0f,  0.5f, 0.0f,   0.0f, 1.0f, 0.0f,  0.0f, 1.0f,  
+	 0.0f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,  1.0f, 0.0f
+	}; //EBO with the texture assigned
 
 	unsigned int indices[] = 
 	{
@@ -115,16 +115,18 @@ int main()
 	glEnableVertexAttribArray(num);
 	std::cout << "attriblocation: " << num << std::endl;
 
-	// Second Element
+	// Second Element - updating another vertexattrippointer for added vertex data for the texture coords
 	glBindVertexArray(VAO[1]);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[1]);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	glEnableVertexAttribArray(2);
 
 	// Triangle
 	glBindVertexArray(VAO[2]);
@@ -166,6 +168,9 @@ int main()
 	glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttributes);
 	std::cout << "Max number of vertex attributes available: " << maxAttributes << std::endl;
 
+
+	unsigned int texture = generateTexture("container.jpg");
+
 	// Set render loop - poll for events and swap buffers
 	while (!glfwWindowShouldClose(window))
 	{
@@ -187,6 +192,7 @@ int main()
 		glm::vec4 outputColor = glm::vec4(1.0, 0.0, 0.0, 1.0);
 		myShader2.use();
 		myShader2.setUniformVec4f("outputColor", outputColor);
+		glBindTexture(GL_TEXTURE_2D, texture);
 		glBindVertexArray(VAO[1]);
 		glDrawElements(GL_TRIANGLES,6, GL_UNSIGNED_INT, 0);	
 
@@ -244,12 +250,37 @@ void keycallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		}
 }
 
-unsigned char* loadImage(int width, int height, int numChannels, std::string textureName)
+unsigned int generateTexture(std::string textureName)
 {
-	return stbi_load(textureName.c_str(), &width, &height, &numChannels, 0);
+	unsigned int texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// wrapping and filtering options
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//load and generate texture
+	int width, height, numChannels;
+	std::string path = "Textures/" + textureName;
+	unsigned char* data = stbi_load(path.c_str(), &width, &height, &numChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		std::cout << textureName << " was successfully loaded." << std::endl;
+	}
+	else
+	{
+		std::cout << " failed to load texture: " << textureName << std::endl;
+	}
+
+	stbi_image_free(data);
+
+	return texture;
 }
-
-
 
 
 
