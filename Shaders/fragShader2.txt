@@ -5,10 +5,12 @@ in vec3 multiColor;
 in vec2 TexCoords;
 
 uniform vec4 outputColor;
-uniform sampler2D ourTexture;
+uniform sampler2D texture0;
+uniform sampler2D texture1;
+uniform float fade;
 
 void main()
 {
 
-	FragColor = texture(ourTexture, TexCoords) * vec4(multiColor, 1.0f);
+	FragColor = mix(texture(texture0, TexCoords), texture(texture1, TexCoords), fade);
 };

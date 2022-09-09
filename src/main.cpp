@@ -16,6 +16,9 @@ const unsigned int WIDTH = 800;
 const unsigned int HEIGHT = 600;
 
 unsigned int generateTexture(std::string textureName);
+unsigned int generateTextureAlpha(std::string textureName);
+
+float fade;
 
 int main()
 {
@@ -39,6 +42,7 @@ int main()
 
 
 	glfwSetKeyCallback(window, keycallback);
+	
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, 1);
 
 	// Make the context of the specified window (this one) current.  Thread can have 1 context at a time
@@ -78,16 +82,16 @@ int main()
 		};
 
 	float vertices2[]{
-	 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-	 0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-	 0.0f,  0.5f, 0.0f,   0.0f, 1.0f, 0.0f,  0.0f, 1.0f,  
-	 0.0f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,  1.0f, 0.0f
+	   0.5f,  0.5f, 0.0f,     1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
+	   0.5f, -0.5f, 0.0f,     0.0f, 1.0f, 0.0f,  1.0f, 0.0f,
+	  -0.5f, -0.5f, 0.0f,     0.0f, 1.0f, 0.0f,  0.0f, 0.0f,  
+	  -0.5f,  0.5f, 0.0f,     0.0f, 0.0f, 1.0f,  0.0f, 1.0f
 	}; //EBO with the texture assigned
 
 	unsigned int indices[] = 
 	{
 		0, 1, 3,
-		3, 0, 2
+		1, 2, 3	
 	};
 
 	float vertices3[]{
@@ -103,17 +107,17 @@ int main()
 	glGenVertexArrays(3, VAO);
 
 	// First Element
-	glBindVertexArray(VAO[0]);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices1), vertices1, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[0]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);	
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	// Example of querying location of vertex attribute (aPos) from vertex shader
-	GLuint num;
-	num = glGetAttribLocation(shaderProgram, "aPos");
-	glEnableVertexAttribArray(num);
-	std::cout << "attriblocation: " << num << std::endl;
+	//glBindVertexArray(VAO[0]);
+	//glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices1), vertices1, GL_STATIC_DRAW);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[0]);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);	
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//// Example of querying location of vertex attribute (aPos) from vertex shader
+	//GLuint num;
+	//num = glGetAttribLocation(shaderProgram, "aPos");
+	//glEnableVertexAttribArray(num);
+	//std::cout << "attriblocation: " << num << std::endl;
 
 	// Second Element - updating another vertexattrippointer for added vertex data for the texture coords
 	glBindVertexArray(VAO[1]);
@@ -129,13 +133,13 @@ int main()
 	glEnableVertexAttribArray(2);
 
 	// Triangle
-	glBindVertexArray(VAO[2]);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices3), vertices3, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float)));
-	glEnableVertexAttribArray(1);
+	//glBindVertexArray(VAO[2]);
+	//glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices3), vertices3, GL_STATIC_DRAW);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float)));
+	//glEnableVertexAttribArray(1);
 
 	// Unbind
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -169,37 +173,55 @@ int main()
 	std::cout << "Max number of vertex attributes available: " << maxAttributes << std::endl;
 
 
-	unsigned int texture = generateTexture("container.jpg");
+	unsigned int texture0 = generateTexture("rory.jpg");
+	unsigned int texture1 = generateTexture("ellie.jpg");
+
+	myShader2.use();
+	//glUniform1i(glGetUniformLocation(shaderProgram2, "texture0"), 0);
+	//glUniform1i(glGetUniformLocation(shaderProgram2, "texture1"), 1);
+	myShader2.setUniformInt("texture0", 0);
+	myShader2.setUniformInt("texture1", 1);
+	
+
 
 	// Set render loop - poll for events and swap buffers
 	while (!glfwWindowShouldClose(window))
 	{
 		// check for keyboard or mouse input
 		processInput(window);
-		
+
+
+		myShader2.setUniformFloat("fade", fade);
 		// rendering commands
 		glClearColor(0.6f, 0.15f, 0.8f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		float time2 = glfwGetTime();
-		float blueSin2 = (sin(time2) / 2.0f) + 0.5f;
+		//float time2 = glfwGetTime();
+		//float blueSin2 = (sin(time2) / 2.0f) + 0.5f;
 
-		myShader.use();											// use shader program
-		myShader.setUniformFloat("coords", blueSin2);			// uniform location and value
-		glBindVertexArray(VAO[0]);
-		glDrawElements(GL_TRIANGLES,6, GL_UNSIGNED_INT, 0);
+		//myShader.use();											// use shader program
+		//myShader.setUniformFloat("coords", blueSin2);			// uniform location and value
+		//glBindVertexArray(VAO[0]);
+		//glDrawElements(GL_TRIANGLES,6, GL_UNSIGNED_INT, 0);
 		
-		glm::vec4 outputColor = glm::vec4(1.0, 0.0, 0.0, 1.0);
-		myShader2.use();
-		myShader2.setUniformVec4f("outputColor", outputColor);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glBindVertexArray(VAO[1]);
-		glDrawElements(GL_TRIANGLES,6, GL_UNSIGNED_INT, 0);	
+		// bind and activate textures
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture0);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, texture1);
 
-		myShader3.use();
-		// shader3 uses vertex input data for color
-		glBindVertexArray(VAO[2]);
-		glDrawArrays(GL_TRIANGLES,0,3);
+	
+
+		//glm::vec4 outputColor = glm::vec4(1.0, 0.0, 0.0, 1.0);
+		myShader2.use();
+		
+		glBindVertexArray(VAO[1]);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		//myShader3.use();
+		//// shader3 uses vertex input data for color
+		//glBindVertexArray(VAO[2]);
+		//glDrawArrays(GL_TRIANGLES,0,3);
 
 		// Swap buffers and check for events
 		glfwSwapBuffers(window);
@@ -248,6 +270,22 @@ void keycallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			break;
 
 		}
+
+	else if (key == GLFW_KEY_UP)
+	{
+		if (fade < 1.0)
+			fade += 0.05;
+		else
+			std::cout << "Full Loo" << std::endl;
+	}
+	else if (key == GLFW_KEY_DOWN)
+	{
+		if (fade > 0.0)
+			fade -= 0.05f;
+		else
+			std::cout << "Full Moo" << std::endl;
+	}
+		
 }
 
 unsigned int generateTexture(std::string textureName)
@@ -283,7 +321,37 @@ unsigned int generateTexture(std::string textureName)
 }
 
 
+unsigned int generateTextureAlpha(std::string textureName)
+{
+	unsigned int texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
 
+	// wrapping and filtering options
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//load and generate texture
+	int width, height, numChannels;
+	std::string path = "Textures/" + textureName;
+	unsigned char* data = stbi_load(path.c_str(), &width, &height, &numChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		std::cout << textureName << " was successfully loaded." << std::endl;
+	}
+	else
+	{
+		std::cout << " failed to load texture: " << textureName << std::endl;
+	}
+
+	stbi_image_free(data);
+
+	return texture;
+}
 
 
 
