@@ -4,6 +4,9 @@
 #include <glad/glad.h>
 #include <vector>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "Shaders.hpp"
 #include "stb_image.h"
 
@@ -39,6 +42,7 @@ int main()
 		glfwTerminate();
 		return -1;
 	}
+
 
 
 	glfwSetKeyCallback(window, keycallback);
@@ -179,10 +183,10 @@ int main()
 	myShader2.use();
 	//glUniform1i(glGetUniformLocation(shaderProgram2, "texture0"), 0);
 	//glUniform1i(glGetUniformLocation(shaderProgram2, "texture1"), 1);
+
+	// Sets layout location for uniforms
 	myShader2.setUniformInt("texture0", 0);
 	myShader2.setUniformInt("texture1", 1);
-	
-
 
 	// Set render loop - poll for events and swap buffers
 	while (!glfwWindowShouldClose(window))
@@ -192,6 +196,7 @@ int main()
 
 
 		myShader2.setUniformFloat("fade", fade);
+
 		// rendering commands
 		glClearColor(0.6f, 0.15f, 0.8f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -209,13 +214,29 @@ int main()
 		glBindTexture(GL_TEXTURE_2D, texture0);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, texture1);
-
 	
-
 		//glm::vec4 outputColor = glm::vec4(1.0, 0.0, 0.0, 1.0);
 		myShader2.use();
+
 		
+		glm::mat4 trans = glm::mat4(1.0f);
+		trans = glm::translate(trans, glm::vec3(0.5f, 0.5f, 0.0f));
+		trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+		//assign transform matrix uniform to position
+		unsigned int transformLoc = glGetUniformLocation(shaderProgram2, "transform");
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
 		glBindVertexArray(VAO[1]);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		//second element object
+		glm::mat4 trans2 = glm::mat4(1.0f);
+		trans2 = glm::translate(trans2, glm::vec3(-0.5f, -0.5f, 0.0f));
+		trans2 = glm::rotate(trans2, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
+		//assign transform matrix uniform to position
+		unsigned int transformLoc2 = glGetUniformLocation(shaderProgram2, "transform");
+		glUniformMatrix4fv(transformLoc2, 1, GL_FALSE, glm::value_ptr(trans2));
+
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		//myShader3.use();
