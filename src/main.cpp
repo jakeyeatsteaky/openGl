@@ -1,17 +1,15 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include <iostream>
 #include <glad/glad.h>
 #include <vector>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "Shaders.hpp"
+#include "stb_image.h"
 
-extern "C"
-{
-	#include "lua.h"
-	#include "lauxlib.h"
-	#include "lualib.h"
-}
-
-#pragma comment(lib, "liblua54.a")
 
 void fb_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -20,101 +18,13 @@ void keycallback(GLFWwindow* window, int key, int scancode, int action, int mods
 const unsigned int WIDTH = 800;
 const unsigned int HEIGHT = 600;
 
-bool CheckLua(lua_State* L, int r);
+unsigned int generateTexture(std::string textureName);
+unsigned int generateTextureAlpha(std::string textureName);
+
+float fade;
 
 int main()
 {
-	std::string cmd = "a = 1";
-	std::string cmd2 = "b = a + 12 * 79 + math.sin(23.7)";
-
-	lua_State *L = luaL_newstate();											// L represents a single instance of a lua virtual machine
-	luaL_openlibs(L);
-
-	if(CheckLua(L, luaL_dostring(L, cmd.c_str())));			
-	{
-		lua_getglobal(L, "a");												// pushes data box with a to the top of the stack
-		if (lua_isnumber(L, -1))											// queries the top of the stack (index -1)
-		{
-			float a_in_cpp = static_cast<float>(lua_tonumber(L, -1));
-			std::cout << "a_in_cpp: " << a_in_cpp << std::endl;
-
-		}
-	}
-
-	if(CheckLua(L, luaL_dostring(L, cmd2.c_str())));			
-	{
-		lua_getglobal(L, "b");
-		if (lua_isnumber(L, -1))
-		{
-			float b_in_cpp = static_cast<float>(lua_tonumber(L, -1));
-			std::cout << "b_in_cpp: " << b_in_cpp << std::endl;
-		}
-	}
-
-
-	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
-	{
-		lua_getglobal(L, "testLua");
-		if (lua_isnumber(L, -1))
-		{
-			float testLua = static_cast<float>(lua_tonumber(L, -1));
-			std::cout << "from file practiceLua.lua: " << testLua << std::endl;
-		}
-	}
-
-	int idx1, idx2, idx3, idx4;
-
-	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
-	{
-		lua_getglobal(L, "idx1");
-		if (lua_isnumber(L, -1))
-		{
-			idx1 = static_cast<int>(lua_tonumber(L, -1));
-		}
-
-		lua_getglobal(L, "idx2");
-		if (lua_isnumber(L, -1))
-		{
-			idx2 = static_cast<int>(lua_tonumber(L, -1));
-		}
-
-		lua_getglobal(L, "idx3");
-		if (lua_isnumber(L, -1))
-		{
-			idx3 = static_cast<int>(lua_tonumber(L, -1));
-		}
-
-		lua_getglobal(L, "idx4");
-		if (lua_isnumber(L, -1))
-		{
-			idx4 = static_cast<int>(lua_tonumber(L, -1));
-		}
-	}
-
-	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
-	{
-		lua_getglobal(L, "Add");
-		if (lua_isfunction(L, -1))
-		{
-			lua_pushnumber(L, 0.3f);
-			lua_pushnumber(L, 0.5f);
-
-			if (CheckLua(L, lua_pcall(L, 2, 1, 0)))
-			{
-				std::cout << "Lua: " << static_cast<float>(lua_tonumber(L, -1)) << std::endl;
-			}
-
-		}
-	}
-
-
-
-	// The Lua Stack: individual elements of the stack is indexed.  Each element on the stack contains the data, as well as information describing the data.  so when calling lua_isnumber, you interrogate the box to see what the data holds (so C++ knows the type).
-
-	// Stack is indexed from bottom up starting with 1.  0 = empty stack
-	// Can also be indexed relative to the top of the stack.  Top = -1, .... all the way down.  when querying the -1 up there, its specifying whats on top of the stack.
-
-
 	// First initialize the glfw library
 	glfwInit();
 	// Then apply configuration settings using glfwWindowHint(*,*)
@@ -133,7 +43,10 @@ int main()
 		return -1;
 	}
 
+
+
 	glfwSetKeyCallback(window, keycallback);
+	
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, 1);
 
 	// Make the context of the specified window (this one) current.  Thread can have 1 context at a time
@@ -173,56 +86,24 @@ int main()
 		};
 
 	float vertices2[]{
-	 0.5f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  // top right
-	 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // bottom right
-	0.0f,  0.5f, 0.0f,  0.0f, 1.0f, 0.0f, // top left  
-	0.0f, -0.5f, 0.0f,  0.0f, 0.0f, 1.0f
-	};
+	   0.5f,  0.5f, 0.0f,     1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
+	   0.5f, -0.5f, 0.0f,     0.0f, 1.0f, 0.0f,  1.0f, 0.0f,
+	  -0.5f, -0.5f, 0.0f,     0.0f, 1.0f, 0.0f,  0.0f, 0.0f,  
+	  -0.5f,  0.5f, 0.0f,     0.0f, 0.0f, 1.0f,  0.0f, 1.0f
+	}; //EBO with the texture assigned
 
-	unsigned int indices[] = {
-		idx1, idx2, idx4,
-		idx4, idx1, idx3
-	};
-
-	std::cout << "indices: [" << idx1 << ", " << idx2 << ", " << idx3 << ", " << idx4 << "]" << std::endl;
-
-	float R1, G1;
-
-	if (CheckLua(L, luaL_dofile(L, "src/practiceLua.lua")))
+	unsigned int indices[] = 
 	{
-		lua_getglobal(L, "color");
-		if (lua_istable(L, -1))
-		{
-			lua_pushstring(L, "R1");
-			lua_gettable(L, -2);
-			R1 = lua_tonumber(L, -1);
-			lua_pop(L, 1);
-
-			lua_pushstring(L, "G1");
-			lua_gettable(L, -2);
-			G1 = lua_tonumber(L, -1);
-			lua_pop(L, -1);
-
-		}
-	}
-
-	// Explaining the pattern above for lua:
-	// After the first call to "color", we know that the box "color" was placed on top of the stack.
-	// Query lua to see if the position -1 on the stack is a table, and if so
-	// Push the string (key) "G1" to the top of the stack.  Now since thats on top, we query the table at position -2
-	// on the stack to retrieve the value at key G1
-	// convert it to a number.
-	// Remove the string "G1" from the top of the stack so it goes back to looking like a regular table
+		0, 1, 3,
+		1, 2, 3	
+	};
 
 	float vertices3[]{
-	 -0.3f,  -0.3f, 0.0f,  R1, 0.0f,0.0f, 
-	 0.3f, -0.3f, 0.0f,    0.0f, G1, 0.0f,
-	 0.0f, 0.3f, 0.0f,     0.0f, 0.0f, G1
+	 -0.3f,  -0.3f, 0.0f,  1.0f, 0.0f,0.0f, 
+	 0.3f, -0.3f, 0.0f,    0.0f, 1.0f, 0.0f,
+	 0.0f, 0.3f, 0.0f,     0.0f, 0.0f, 1.0f
 	
 	};
-
-
-	lua_close(L);
 
 	unsigned int VAO[3], VBO[3], EBO[2];
 	glGenBuffers(3, VBO);
@@ -230,37 +111,39 @@ int main()
 	glGenVertexArrays(3, VAO);
 
 	// First Element
-	glBindVertexArray(VAO[0]);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices1), vertices1, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[0]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);	
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	// Example of querying location of vertex attribute (aPos) from vertex shader
-	GLuint num;
-	num = glGetAttribLocation(shaderProgram, "aPos");
-	glEnableVertexAttribArray(num);
-	std::cout << "attriblocation: " << num << std::endl;
+	//glBindVertexArray(VAO[0]);
+	//glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices1), vertices1, GL_STATIC_DRAW);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[0]);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);	
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	//// Example of querying location of vertex attribute (aPos) from vertex shader
+	//GLuint num;
+	//num = glGetAttribLocation(shaderProgram, "aPos");
+	//glEnableVertexAttribArray(num);
+	//std::cout << "attriblocation: " << num << std::endl;
 
-	// Second Element
+	// Second Element - updating another vertexattrippointer for added vertex data for the texture coords
 	glBindVertexArray(VAO[1]);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices2), vertices2, GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[1]);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	glEnableVertexAttribArray(2);
 
 	// Triangle
-	glBindVertexArray(VAO[2]);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices3), vertices3, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float)));
-	glEnableVertexAttribArray(1);
+	//glBindVertexArray(VAO[2]);
+	//glBindBuffer(GL_ARRAY_BUFFER, VBO[2]);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices3), vertices3, GL_STATIC_DRAW);
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	//glEnableVertexAttribArray(0);
+	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3* sizeof(float)));
+	//glEnableVertexAttribArray(1);
 
 	// Unbind
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -293,34 +176,73 @@ int main()
 	glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttributes);
 	std::cout << "Max number of vertex attributes available: " << maxAttributes << std::endl;
 
+
+	unsigned int texture0 = generateTexture("rory.jpg");
+	unsigned int texture1 = generateTexture("ellie.jpg");
+
+	myShader2.use();
+	//glUniform1i(glGetUniformLocation(shaderProgram2, "texture0"), 0);
+	//glUniform1i(glGetUniformLocation(shaderProgram2, "texture1"), 1);
+
+	// Sets layout location for uniforms
+	myShader2.setUniformInt("texture0", 0);
+	myShader2.setUniformInt("texture1", 1);
+
 	// Set render loop - poll for events and swap buffers
 	while (!glfwWindowShouldClose(window))
 	{
 		// check for keyboard or mouse input
 		processInput(window);
-		
+
+
+		myShader2.setUniformFloat("fade", fade);
+
 		// rendering commands
 		glClearColor(0.6f, 0.15f, 0.8f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		float time2 = glfwGetTime();
-		float blueSin2 = (sin(time2) / 2.0f) + 0.5f;
+		//float time2 = glfwGetTime();
+		//float blueSin2 = (sin(time2) / 2.0f) + 0.5f;
 
-		myShader.use();											// use shader program
-		myShader.setUniformFloat("coords", blueSin2);			// uniform location and value
-		glBindVertexArray(VAO[0]);
-		glDrawElements(GL_TRIANGLES,6, GL_UNSIGNED_INT, 0);
+		//myShader.use();											// use shader program
+		//myShader.setUniformFloat("coords", blueSin2);			// uniform location and value
+		//glBindVertexArray(VAO[0]);
+		//glDrawElements(GL_TRIANGLES,6, GL_UNSIGNED_INT, 0);
 		
-		glm::vec4 outputColor = glm::vec4(1.0, 0.0, 0.0, 1.0);
+		// bind and activate textures
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture0);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, texture1);
+	
+		//glm::vec4 outputColor = glm::vec4(1.0, 0.0, 0.0, 1.0);
 		myShader2.use();
-		myShader2.setUniformVec4f("outputColor", outputColor);
-		glBindVertexArray(VAO[1]);
-		glDrawElements(GL_TRIANGLES,6, GL_UNSIGNED_INT, 0);	
 
-		myShader3.use();
-		// shader3 uses vertex input data for color
-		glBindVertexArray(VAO[2]);
-		glDrawArrays(GL_TRIANGLES,0,3);
+		
+		glm::mat4 trans = glm::mat4(1.0f);
+		trans = glm::translate(trans, glm::vec3(0.5f, 0.5f, 0.0f));
+		trans = glm::rotate(trans, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+		//assign transform matrix uniform to position
+		unsigned int transformLoc = glGetUniformLocation(shaderProgram2, "transform");
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
+		glBindVertexArray(VAO[1]);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		//second element object
+		glm::mat4 trans2 = glm::mat4(1.0f);
+		trans2 = glm::translate(trans2, glm::vec3(-0.5f, -0.5f, 0.0f));
+		trans2 = glm::rotate(trans2, (float)glfwGetTime(), glm::vec3(0.0f, 1.0f, 0.0f));
+		//assign transform matrix uniform to position
+		unsigned int transformLoc2 = glGetUniformLocation(shaderProgram2, "transform");
+		glUniformMatrix4fv(transformLoc2, 1, GL_FALSE, glm::value_ptr(trans2));
+
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+		//myShader3.use();
+		//// shader3 uses vertex input data for color
+		//glBindVertexArray(VAO[2]);
+		//glDrawArrays(GL_TRIANGLES,0,3);
 
 		// Swap buffers and check for events
 		glfwSwapBuffers(window);
@@ -369,23 +291,88 @@ void keycallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			break;
 
 		}
-}
 
-
-
-bool CheckLua(lua_State* L, int r)
-{
-	if (r != LUA_OK)
+	else if (key == GLFW_KEY_UP)
 	{
-		std::string errormsg = lua_tostring(L, -1);
-		std::cout << errormsg << std::endl;
-		return false;
+		if (fade < 1.0)
+			fade += 0.05;
+		else
+			std::cout << "Full Loo" << std::endl;
 	}
-	return true;
+	else if (key == GLFW_KEY_DOWN)
+	{
+		if (fade > 0.0)
+			fade -= 0.05f;
+		else
+			std::cout << "Full Moo" << std::endl;
+	}
+		
+}
+
+unsigned int generateTexture(std::string textureName)
+{
+	unsigned int texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// wrapping and filtering options
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//load and generate texture
+	int width, height, numChannels;
+	std::string path = "Textures/" + textureName;
+	unsigned char* data = stbi_load(path.c_str(), &width, &height, &numChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		std::cout << textureName << " was successfully loaded." << std::endl;
+	}
+	else
+	{
+		std::cout << " failed to load texture: " << textureName << std::endl;
+	}
+
+	stbi_image_free(data);
+
+	return texture;
 }
 
 
+unsigned int generateTextureAlpha(std::string textureName)
+{
+	unsigned int texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
 
+	// wrapping and filtering options
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//load and generate texture
+	int width, height, numChannels;
+	std::string path = "Textures/" + textureName;
+	unsigned char* data = stbi_load(path.c_str(), &width, &height, &numChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		std::cout << textureName << " was successfully loaded." << std::endl;
+	}
+	else
+	{
+		std::cout << " failed to load texture: " << textureName << std::endl;
+	}
+
+	stbi_image_free(data);
+
+	return texture;
+}
 
 
 
