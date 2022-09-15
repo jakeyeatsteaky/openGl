@@ -24,7 +24,7 @@ void Lua::run()
 	lua_State* L = luaL_newstate();											// L represents a single instance of a lua virtual machine
 	luaL_openlibs(L);
 
-	if (CheckLua(L, luaL_dostring(L, cmd.c_str())));
+	if (CheckLua(L, luaL_dostring(L, cmd.c_str())))
 	{
 		lua_getglobal(L, "a");												// pushes data box with a to the top of the stack
 		if (lua_isnumber(L, -1))											// queries the top of the stack (index -1)
@@ -35,7 +35,7 @@ void Lua::run()
 		}
 	}
 
-	if (CheckLua(L, luaL_dostring(L, cmd2.c_str())));
+	if (CheckLua(L, luaL_dostring(L, cmd2.c_str())))
 	{
 		lua_getglobal(L, "b");
 		if (lua_isnumber(L, -1))
